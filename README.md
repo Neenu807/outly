@@ -3,8 +3,9 @@
 Activity discovery and booking platform. Find something to do tonight, book a
 seat, show up, review it.
 
-> **Status: Phase 0 complete — foundation and contract lock.**
-> No business logic yet. See [Development phases](#development-phases).
+> **Status: Phase 1 built locally — auth, email verification, profile and
+> organizer approval.** The first production deploy is next; see
+> [`docs/DEPLOY.md`](docs/DEPLOY.md) and [Development phases](#development-phases).
 
 ## Tech stack, and why
 
@@ -34,7 +35,7 @@ MongoDB Atlas   2dsphere · aggregation pipelines · one transaction
 ```
 
 The full technical design is [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-(v5.1, frozen). Working rules for contributors — including the ones an AI
+(v5.2, frozen). Working rules for contributors — including the ones an AI
 assistant must follow — are in [`CLAUDE.md`](CLAUDE.md).
 
 **Every secret lives on the server.** The browser holds no database string, no
@@ -65,6 +66,20 @@ npm run dev                   # http://localhost:5173
 
 Open http://localhost:5173 — the home page shows live `db` status fetched from
 `GET /api/v1/health`. Stop the API and the page renders its error state.
+
+**Emails in development.** Without `SMTP_*` set, the API does not send mail — it
+writes each message to its terminal instead. Register, then copy the
+verification link from the `npm run dev` output. Production refuses to boot
+without SMTP.
+
+**An admin account.** Admins are never self-service:
+
+```bash
+cd server
+npm run create-admin -- --email you@example.com --name "Your Name"
+```
+
+It prints a generated password once. Change it through *Forgot password*.
 
 Generate the two JWT secrets with `openssl rand -base64 48`. They must differ
 from each other and each be at least 32 characters; `config/env.js` refuses to
@@ -104,12 +119,14 @@ published secret.**
 | `server` | `npm test` | Vitest against mongodb-memory-server |
 | `server` | `npm run lint` | ESLint |
 | `server` | `npm run migrate:organizers` | dry run of the §7 organizer migration; add `-- --apply` to write |
+| `server` | `npm run create-admin -- --email …` | create a verified admin, or promote an existing account |
+| `server` | `npm run create-indexes` | build schema indexes — required in production, where `autoIndex` is off |
 | `client` | `npm run dev` | Vite dev server |
 | `client` | `npm run build` | production bundle to `dist/` |
 | `client` | `npm run lint` | ESLint |
 
-`npm run seed`, `npm run reconcile` and `npm run create-admin` are registered
-placeholders; they land in Phases 1–3.
+`npm run seed` and `npm run reconcile` are registered placeholders; they land in
+Phases 2 and 3.
 
 ## API
 
@@ -120,9 +137,17 @@ All routes are under `/api/v1`, with one envelope:
 { "success": false, "error": { "code": "SOLD_OUT", "message": "...", "details": { } } }
 ```
 
-Live today: `GET /health`, `POST /auth/register`, `POST /auth/login`,
-`GET /auth/me`, `POST /auth/refresh`. The full 43-endpoint contract is §19 of the
-architecture document.
+Live today:
+
+| Area | Routes |
+|---|---|
+| Health | `GET /health` |
+| Auth | `POST /auth/register` · `login` · `refresh` · `logout` · `verify-email` · `resend-verification` · `forgot-password` · `reset-password` · `GET /auth/me` · `PATCH /auth/password` |
+| Profile | `PATCH /users/me` |
+| Organizer | `GET` / `POST /organizer/request` |
+| Admin | `GET /admin/organizer-requests` · `PATCH /admin/organizer-requests/:id/approve` · `/reject` |
+
+The full 44-endpoint contract is §19 of the architecture document.
 
 ## Data models
 
@@ -148,7 +173,7 @@ aggregation correctness.
 | Phase | Scope | Status |
 |---|---|---|
 | 0 | Foundation & contract lock | **complete** |
-| 1 | Auth · email verification · organizer approval · first deploy | in progress |
+| 1 | Auth · email verification · organizer approval · first deploy | built locally; deploy pending |
 | 2 | Categories · activity read · search/filter/sort · seed | — |
 | 3 | Booking · atomic capacity · integrity · completion job | — |
 | 4 | Organizer · Cloudinary · dashboards · aggregation | — |

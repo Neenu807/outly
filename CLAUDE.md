@@ -1,6 +1,6 @@
 # Outly — working rules
 
-`docs/ARCHITECTURE.md` (v5.1) is the implementation source of truth. It is
+`docs/ARCHITECTURE.md` (v5.2) is the implementation source of truth. It is
 frozen. If a request conflicts with it, **flag the conflict before writing
 code** rather than silently reintroducing something that was deliberately
 removed (§30).
@@ -108,7 +108,7 @@ removed (§30).
 
 ## Deviations from the document, recorded deliberately
 
-These are the only places the code knowingly differs from v5.1. Each is a
+These are the only places the code knowingly differs from v5.2. Each is a
 resolution of an internal inconsistency, not a shortcut.
 
 - **`utils/errorCodes.js` holds 27 codes, not 25.** `NOT_FOUND` is added for
@@ -126,3 +126,24 @@ resolution of an internal inconsistency, not a shortcut.
 - **The organizer migration is `scripts/migrateOrganizers.js`.** §7 names it
   that; §23's script list still says `migrateApprovals.js`, a leftover from the
   v4 approval model. §7 describes what the script actually does, so its name wins.
+- **A redeemed email-verification token keeps its hash; only the expiry is
+  cleared.** §18 says redemption "clears the token fields" but also that
+  re-verifying is idempotent — both cannot hold, because a cleared hash makes
+  the second click on the same link unrecognisable. The retained hash can only
+  mark an already-verified account verified, so it grants nothing.
+- **Email does not go through `services/external/httpClient.js`.** §16 routes
+  Nodemailer through the shared HTTP client, but SMTP is not HTTP.
+  `email.service.js` applies the same policy directly (timeout, no retry on a
+  non-idempotent send, no bodies or credentials in logs). The shared client is
+  built when its first HTTP caller (Cloudinary, Phase 4) arrives.
+- **Two cases with no §20 code reuse existing ones.** An invalid, used or
+  expired email link is `400 VALIDATION_FAILED` with `details.token` (§26 asks
+  for a 400). Deciding a request that is not pending is `404 NOT_FOUND` — the
+  pending request being acted on does not exist.
+- **Email links carry the token in the URL fragment** (`#token=…`), which the
+  browser never sends to a server or puts in a Referer header. §18 only says the
+  token is "emailed in a link".
+- **Password change was a spec gap, now closed in the spec itself.** §18 listed
+  password change as a `tokenVersion` event but §19 defined no route. Resolved
+  by change request in v5.2: `PATCH /api/v1/auth/password` is part of §18 and
+  §19, so this entry records the resolution rather than a live deviation.

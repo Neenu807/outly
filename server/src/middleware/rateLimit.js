@@ -43,42 +43,56 @@ const globalLimiter = build({
 });
 
 /** 5 / 15 min per IP — login and register. */
-const authLimiter = build({
-  windowMs: FIFTEEN_MINUTES,
-  limit: 5,
-  skipSuccessfulRequests: false,
-});
+const authLimiter = build({ windowMs: FIFTEEN_MINUTES, limit: 5 });
 
 /** 20 / 15 min per IP — token refresh. */
-const refreshLimiter = build({
-  windowMs: FIFTEEN_MINUTES,
-  limit: 20,
-});
+const refreshLimiter = build({ windowMs: FIFTEEN_MINUTES, limit: 20 });
 
 /** 3 / hour per IP — forgot password. */
-const forgotPasswordLimiter = build({
-  windowMs: HOUR,
-  limit: 3,
-});
+const forgotPasswordLimiter = build({ windowMs: HOUR, limit: 3 });
 
 /**
- * Per-authenticated-user limiter factory for the routes §18 scopes by account
- * rather than by IP (resend-verification, bookings, reviews, /discover/explain,
- * /admin/*). Falls back to the IP key for unauthenticated callers —
- * `ipKeyGenerator` is required for correct IPv6 handling.
+ * 5 / hour per IP — the organizer request. The 30-day cooldown (§7) is the real
+ * control; this only stops hammering.
+ */
+const organizerRequestLimiter = build({ windowMs: HOUR, limit: 5 });
+
+/**
+ * Per-account limiter factory for the routes §18 scopes by account rather than
+ * by IP. Mount it AFTER requireAuth, which is what puts `req.user` there.
+ *
+ * The IP fallback goes through `ipKeyGenerator(ip)`, which collapses an IPv6
+ * address to its /56 subnet — without it, one IPv6 client could rotate through
+ * addresses and never be limited.
  */
 const perUserLimiter = ({ windowMs, limit }) =>
   build({
     windowMs,
     limit,
-    keyGenerator: (req, res) =>
-      req.user?._id ? `user:${req.user._id}` : ipKeyGenerator(req, res),
+    keyGenerator: (req) =>
+      req.user?._id ? `user:${req.user._id}` : ipKeyGenerator(req.ip),
   });
+
+/** 3 / hour per account — resend verification. */
+const resendVerificationLimiter = perUserLimiter({ windowMs: HOUR, limit: 3 });
+
+/**
+ * 5 / 15 min per account — password change. Keyed by account rather than IP:
+ * the threat is a stolen access token being used to guess the current password.
+ */
+const passwordChangeLimiter = perUserLimiter({ windowMs: FIFTEEN_MINUTES, limit: 5 });
+
+/** 300 / 15 min per admin. */
+const adminLimiter = perUserLimiter({ windowMs: FIFTEEN_MINUTES, limit: 300 });
 
 export {
   globalLimiter,
   authLimiter,
   refreshLimiter,
   forgotPasswordLimiter,
+  organizerRequestLimiter,
   perUserLimiter,
+  resendVerificationLimiter,
+  passwordChangeLimiter,
+  adminLimiter,
 };

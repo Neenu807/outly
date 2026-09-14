@@ -1,6 +1,6 @@
-# Outly — Architecture v5.1
+# Outly — Architecture v5.2
 
-**Final implementation architecture. This supersedes v5 and is the implementation source of truth.**
+**Final implementation architecture. This supersedes v5.1 and is the implementation source of truth.**
 
 v4 is not a redesign. Every architectural decision from v2 → v3 → v3.1 that was correct is preserved unchanged: the layered monolith, the atomic capacity guard, GeoJSON from day one, explicit organizer request and admin approval, `/api/v1` versioning, the deterministic discovery scorer, the phase ordering, and every security and integrity rule.
 
@@ -119,6 +119,16 @@ Both fields are **filters, not scoring components**, so the five discovery weigh
 **Considered and rejected:** a stored `estimatedDuration` — it duplicates `endDateTime - startDateTime` and would silently disagree with the schedule the first time an organizer reschedules. Duration is derived, like `seatsRemaining`.
 
 **No change to:** the five models, booking integrity, authorization, the organizer model, AI, Twilio, email, dashboards, hooks, Tailwind, MVP scope, or the 26 Must-Haves.
+
+### v5.1 → v5.2 · the password-change route
+
+| # | Change | Why |
+|---|---|---|
+| **Z1** | **`PATCH /api/v1/auth/password`** — authenticated password change that requires the current password. On success it replaces the hash, bumps `tokenVersion`, clears the refresh cookie and returns `204`; the member signs in again. | §18 already named password change as one of the three `tokenVersion` events, but §19 defined no route, so the event could never occur. A policy with no mechanism behind it is a gap, not a rule. |
+
+Details, all in §18 and §19: a wrong current password is `400 VALIDATION_FAILED` with `details.currentPassword` — not `401`, because the session is valid and a `401` would send the client's refresh interceptor after a problem no refresh can fix · a new password equal to the current one is refused with `details.newPassword` · the write is guarded on the hash that was verified, so a concurrent change or reset is never overwritten · any outstanding reset link is retired · rate-limited 5 / 15 min per account.
+
+**No change to:** the error registry (no new code), the models, the forgot/reset flow, the authorization matrix, or anything outside authentication. Endpoint count 43 → 44.
 
 ### Scope impact — stated plainly
 
@@ -1439,6 +1449,14 @@ Same token mechanism: random token, **store only the SHA-256 hash**, 1-hour expi
 
 **`POST /auth/forgot-password` always returns `204`**, including for an email that does not exist. Returning `404` turns the endpoint into an account-enumeration oracle. For the same reason, login returns one generic `INVALID_CREDENTIALS` for both an unknown email and a wrong password, and runs the bcrypt compare even when the user is not found so the timing does not differ. Registration with an existing email returns a generic `EMAIL_IN_USE`.
 
+### Password change
+
+`PATCH /auth/password` with `{ currentPassword, newPassword }`, behind `requireAuth`. The current password is required even though the caller already holds a valid session — a stolen access token must not be enough to take over an account. The new password follows the registration rules and must differ from the current one.
+
+On success the hash is replaced and **`tokenVersion` is bumped**, which ends every session for the account **including the one that made the request**; the refresh cookie is cleared and the response is `204`. The member signs in again with the new password. The update is guarded on the hash that was just verified, and any outstanding password-reset link is retired, so an old email cannot undo the new password.
+
+A wrong current password returns **`400 VALIDATION_FAILED`** with `details.currentPassword`, not `401`: the session is valid, and a `401` would send the client's refresh interceptor after a problem no refresh can fix.
+
 ### Rate limiting
 
 | Scope | Limit |
@@ -1448,6 +1466,7 @@ Same token mechanism: random token, **store only the SHA-256 hash**, 1-hour expi
 | `/auth/refresh` | 20 / 15 min per IP |
 | `/auth/forgot-password` | 3 / hour per IP |
 | `/auth/resend-verification` | 3 / hour per account |
+| `PATCH /auth/password` | 5 / 15 min per account |
 | `POST /bookings` | 20 / 15 min per user |
 | `POST /discover/explain` | 10 / min per user (§14) |
 | `POST /reviews` | 10 / hour per user |
@@ -1491,6 +1510,7 @@ Every rule in this section is enforced by server-side middleware. The frontend h
 | POST | `/api/v1/auth/resend-verification` | ✓ | rate-limited 3/hour per account |
 | POST | `/api/v1/auth/forgot-password` | — | `{ email }` → **always 204** |
 | POST | `/api/v1/auth/reset-password` | — | `{ token, password }` |
+| PATCH | `/api/v1/auth/password` | ✓ | `{ currentPassword, newPassword }` — bumps `tokenVersion`, clears the refresh cookie, `204`; the member signs in again. Wrong current password → `400 VALIDATION_FAILED` (§18) |
 | PATCH | `/api/v1/users/me` | ✓ | name, avatar, city, interests, **phone**, **smsOptIn**. Never role or organizerStatus |
 
 ### Catalogue and discovery
@@ -1550,7 +1570,7 @@ Every rule in this section is enforced by server-side middleware. The frontend h
 | **PATCH** | **`/api/v1/admin/organizer-requests/:id/reject`** | **✓ adm** | **`{ reason }` required; emails the user. Does **not** bump `tokenVersion` — the account stays fully usable** |
 | PATCH | `/api/v1/admin/reviews/:id/hide` | ✓ adm | sets `isHidden`, never a hard delete |
 
-**43 endpoints, all in the MVP.** Publish remains its own `PATCH .../publish` rather than being implied by `PUT` — nothing goes live as a side effect of an update, the same principle as the explicit organizer request and admin approval in §7.
+**44 endpoints, all in the MVP.** Publish remains its own `PATCH .../publish` rather than being implied by `PUT` — nothing goes live as a side effect of an update, the same principle as the explicit organizer request and admin approval in §7.
 
 ---
 
@@ -2008,7 +2028,7 @@ Register → Verify email → Browse / Discover → Search · Filter · Sort
 
 **Phase 1 — auth and approval (~12)**
 
-*Auth:* duplicate email → 409 · weak password → 400 · identical error and comparable timing for unknown-email vs wrong-password · expired and tampered tokens → 401 · **forgot-password returns 204 for an unknown email** · reset token is single-use and bumps `tokenVersion`, invalidating old access tokens · email verification marks the account and is idempotent.
+*Auth:* duplicate email → 409 · weak password → 400 · identical error and comparable timing for unknown-email vs wrong-password · expired and tampered tokens → 401 · **forgot-password returns 204 for an unknown email** · reset token is single-use and bumps `tokenVersion`, invalidating old access tokens · email verification marks the account and is idempotent · **password change requires the current password (a wrong one is `400` and the session stays valid) and bumps `tokenVersion`, so the requesting session's own access and refresh tokens stop working**.
 
 *Email verification — the §18 boundary.* An unverified account **can** register, log in, browse, search, filter, sort, open an activity, run discovery and read reviews · an unverified account **cannot** book → `403 EMAIL_NOT_VERIFIED` · cannot cancel a booking → 403 · cannot submit a review → 403 · cannot request organizer capability → 403 · **verifying then retrying the same request succeeds with no re-login**, because `isEmailVerified` is read per request and is not in the token · resend is rate-limited to 3/hour · verifying twice is idempotent · an expired verification token → 400.
 
@@ -2421,7 +2441,7 @@ For every feature from here:
 ```
 React SPA  (Vite · React Router · TanStack Query · Axios · Tailwind · 18 custom hooks)
    ↓  filter state in the URL · access token in memory · refresh in httpOnly cookie
-Express REST API  (/api/v1 · 43 endpoints)
+Express REST API  (/api/v1 · 44 endpoints)
    ↓  Routes → Middleware → Controllers → Services → Mongoose
 MongoDB Atlas  (5 models · 20 indexes · 2dsphere from day one
                 · 6 aggregation pipelines · one transaction, for activity cancellation)
@@ -2442,7 +2462,7 @@ Parallel, non-blocking track:
    UI/UX design     → docs/UX.md — see §3. Does not gate any phase.
 ```
 
-**Five models. 43 endpoints. 25 error codes. Twenty indexes. Six aggregation pipelines. Four external integrations. Two roles. One hard problem — concurrent capacity — solved once, tested properly, and read from by everything else.**
+**Five models. 44 endpoints. 25 error codes. Twenty indexes. Six aggregation pipelines. Four external integrations. Two roles. One hard problem — concurrent capacity — solved once, tested properly, and read from by everything else.**
 
 ---
 

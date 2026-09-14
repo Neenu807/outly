@@ -128,6 +128,21 @@ const envSchema = z
       }
     }
 
+    // Email verification gates booking, reviewing and the organizer request
+    // (§18), so production without a mail transport is a platform on which
+    // nobody can ever book. Development logs the email instead of sending it.
+    if (env.NODE_ENV === "production") {
+      for (const key of ["SMTP_HOST", "SMTP_PORT"]) {
+        if (!env[key]) {
+          ctx.addIssue({
+            code: "custom",
+            path: [key],
+            message: `${key} is required in production — verification emails must be deliverable`,
+          });
+        }
+      }
+    }
+
     // Cross-site refresh cookies require Secure; browsers reject SameSite=None
     // without it. This fails only in production, which is why it is checked here.
     if (env.COOKIE_SAMESITE === "none" && !env.COOKIE_SECURE) {

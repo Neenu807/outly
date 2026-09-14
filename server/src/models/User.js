@@ -65,9 +65,12 @@ const userSchema = new mongoose.Schema(
       trim: true,
       maxlength: 300,
       // A rejection without a reason is a decision the member cannot act on.
+      // `this` is the document on save but the query (or undefined) inside an
+      // update validator, hence the optional chaining. Updates are covered by
+      // the reject endpoint's Zod schema, which requires the reason.
       required: [
         function () {
-          return this.organizerStatus === "rejected";
+          return this?.organizerStatus === "rejected";
         },
         "A reason is required when an organizer request is rejected",
       ],

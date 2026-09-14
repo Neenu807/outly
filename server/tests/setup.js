@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeAll } from "vitest";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
+import { whenIdle } from "../src/utils/background.js";
 
 /**
  * A real MongoDB, fresh per run (ARCHITECTURE §26). Mocking Mongoose would
@@ -16,6 +17,10 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
+  // Let post-response work (emails, the forgot-password lookup) finish first,
+  // or it writes into the next test's empty database.
+  await whenIdle();
+
   // Clear between tests so ordering never matters.
   const { collections } = mongoose.connection;
 

@@ -1,10 +1,12 @@
 import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
+import VerificationBanner from "./VerificationBanner";
 
 function AppLayout() {
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
+      <VerificationBanner />
 
       <div className="flex-1">
         <Outlet />

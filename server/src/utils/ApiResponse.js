@@ -25,4 +25,7 @@ const sendSuccess = (res, { status = 200, data = null, meta } = {}) => {
 const sendPaginated = (res, { status = 200, data, page, limit, total }) =>
   sendSuccess(res, { status, data, meta: buildMeta({ page, limit, total }) });
 
-export { sendSuccess, sendPaginated, buildMeta };
+/** 204 carries no body — not even the envelope. */
+const sendNoContent = (res) => res.status(204).end();
+
+export { sendSuccess, sendPaginated, sendNoContent, buildMeta };

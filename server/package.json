@@ -15,7 +15,8 @@
     "migrate:organizers": "node scripts/migrateOrganizers.js",
     "seed": "echo \"Phase 2: scripts/seed.js\" && exit 1",
     "reconcile": "echo \"Phase 3: scripts/reconcile.js\" && exit 1",
-    "create-admin": "echo \"Phase 1: scripts/createAdmin.js\" && exit 1"
+    "create-admin": "node scripts/createAdmin.js",
+    "create-indexes": "node scripts/createIndexes.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -28,6 +29,7 @@
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.10.0",
+    "nodemailer": "^10.0.9",
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",
     "zod": "^4.6.4"

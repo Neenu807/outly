@@ -45,7 +45,10 @@ const queryKeys = {
   admin: {
     all: ["admin"],
     users: (filters) => ["admin", "users", filters],
-    organizerRequests: (filters) => ["admin", "organizerRequests", filters],
+    organizerRequests: {
+      all: ["admin", "organizerRequests"],
+      list: (filters) => ["admin", "organizerRequests", filters],
+    },
     dashboard: ["admin", "dashboard"],
   },
 };

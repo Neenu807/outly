@@ -58,6 +58,13 @@ app.use(
   pinoHttp({
     logger,
     autoLogging: { ignore: (req) => req.url === "/api/v1/health" },
+    // Method, URL, status and timing — never headers. Headers carry cookies,
+    // tokens and client details §16 keeps out of logs, and in development they
+    // bury every line worth reading.
+    serializers: {
+      req: (req) => ({ id: req.id, method: req.method, url: req.url }),
+      res: (res) => ({ statusCode: res.statusCode }),
+    },
   }),
 );
 

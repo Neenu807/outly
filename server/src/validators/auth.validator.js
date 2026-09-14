@@ -15,7 +15,7 @@ const email = z
 /**
  * bcrypt only reads the first 72 BYTES of its input and silently ignores the
  * rest — so two long passwords sharing a prefix would both unlock the account.
- * Capping it at registration makes that impossible rather than surprising.
+ * Capping it makes that impossible rather than surprising.
  */
 const newPassword = z
   .string()
@@ -24,6 +24,8 @@ const newPassword = z
     (value) => Buffer.byteLength(value, "utf8") <= 72,
     "Password must be at most 72 bytes",
   );
+
+const linkToken = z.string().trim().min(20, "Invalid link").max(200, "Invalid link");
 
 // z.object strips unknown keys, and validate() REPLACES req.body with the
 // result — so role, organizerStatus, isEmailVerified or tokenVersion in a
@@ -45,4 +47,26 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required").max(1024),
 });
 
-export { registerSchema, loginSchema };
+const verifyEmailSchema = z.object({ token: linkToken });
+
+const forgotPasswordSchema = z.object({ email });
+
+const resetPasswordSchema = z.object({ token: linkToken, password: newPassword });
+
+// Whether the new password differs from the current one needs the stored hash,
+// so that check lives in the service, not here.
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Enter your current password").max(1024),
+  newPassword,
+});
+
+export {
+  email,
+  newPassword,
+  registerSchema,
+  loginSchema,
+  verifyEmailSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  changePasswordSchema,
+};

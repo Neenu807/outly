@@ -68,8 +68,7 @@ const translate = (err) => {
 const errorHandler = (err, req, res, _next) => {
   const error = translate(err);
 
-  const log = {
-    err,
+  const context = {
     requestId: req.id,
     method: req.method,
     url: req.originalUrl,
@@ -78,9 +77,13 @@ const errorHandler = (err, req, res, _next) => {
   };
 
   if (error.statusCode >= 500) {
-    logger.error(log, "Unhandled error");
+    // Only a server fault earns the full error and its stack.
+    logger.error({ ...context, err }, "Unhandled error");
   } else {
-    logger.warn(log, "Request failed");
+    // A 4xx is the API working as designed — a wrong password, a stale
+    // session, a bad link. Its stack says nothing, and an anonymous visitor's
+    // session bootstrap produces two of them on every page load.
+    logger.warn(context, error.message);
   }
 
   const body = {
