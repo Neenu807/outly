@@ -1,47 +1,32 @@
-import jwt from "jsonwebtoken";
-import ApiError from "../utils/ApiError.js";
+import { verifyAccessToken } from "../utils/jwt.js";
+import { apiError } from "../utils/errorCodes.js";
+
+// NOTE (Step B): this becomes the full `requireAuth` from §18 — loading the
+// user, comparing `tokenVersion`, and attaching `req.user`. It currently only
+// verifies the signature and attaches `req.userId`.
 
 const verifyJWT = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {
-    return next(
-      new ApiError(
-        401,
-        "TOKEN_REQUIRED",
-        "Authentication token is required",
-      ),
-    );
+    return next(apiError("UNAUTHENTICATED", "Authentication required"));
   }
 
   const [scheme, token] = authHeader.split(" ");
 
   if (scheme !== "Bearer" || !token) {
-    return next(
-      new ApiError(
-        401,
-        "INVALID_TOKEN",
-        "Invalid authentication token",
-      ),
-    );
+    return next(apiError("UNAUTHENTICATED", "Authentication required"));
   }
 
   try {
-    const tokenData = jwt.verify(
-      token,
-      process.env.JWT_ACCESS_SECRET,
-    );
+    const payload = verifyAccessToken(token);
 
-    req.userId = tokenData.userId;
+    req.userId = payload.userId;
 
-    next();
-  } catch (error) {
+    return next();
+  } catch {
     return next(
-      new ApiError(
-        401,
-        "INVALID_TOKEN",
-        "Invalid or expired authentication token",
-      ),
+      apiError("UNAUTHENTICATED", "Invalid or expired authentication token"),
     );
   }
 };

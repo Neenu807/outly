@@ -1,12 +1,8 @@
-import AppLayout from "./shared/components/AppLayout";
-import AppRoutes from "./app/AppRoutes";
+import AppRouter from "@/app/router";
 
+/** The shell. Providers live in app/providers.jsx, routes in app/router.jsx. */
 function App() {
-  return (
-    <AppLayout>
-      <AppRoutes />
-    </AppLayout>
-  );
+  return <AppRouter />;
 }
 
 export default App;

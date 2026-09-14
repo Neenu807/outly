@@ -1,11 +1,21 @@
+import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
 
-function AppLayout({ children }) {
+function AppLayout() {
   return (
-    <>
+    <div className="flex min-h-screen flex-col">
       <Navbar />
-      {children}
-    </>
+
+      <div className="flex-1">
+        <Outlet />
+      </div>
+
+      <footer className="border-t border-slate-200 py-6">
+        <p className="mx-auto max-w-5xl px-4 text-xs text-slate-400 sm:px-6">
+          Outly — activity discovery and booking
+        </p>
+      </footer>
+    </div>
   );
 }
 

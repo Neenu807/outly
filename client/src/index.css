@@ -1,29 +1,32 @@
-* {
-  box-sizing: border-box;
-}
+@import "tailwindcss";
 
-html,
-body,
-#root {
-  margin: 0;
-  min-height: 100%;
-}
+/**
+ * Tailwind v4 is configured in CSS, not in a tailwind.config.js.
+ *
+ * ARCHITECTURE §22: Tailwind is Outly's UI framework and no second component
+ * library is added. The tokens below are a deliberate placeholder scaffold —
+ * the real palette, scale and typography belong to the UI/UX track (§3) and
+ * can be replaced here without touching a single component.
+ */
+@theme {
+  --color-brand-50: oklch(0.97 0.02 250);
+  --color-brand-100: oklch(0.93 0.05 250);
+  --color-brand-500: oklch(0.62 0.19 250);
+  --color-brand-600: oklch(0.55 0.19 250);
+  --color-brand-700: oklch(0.48 0.17 250);
 
-body {
-  font-family:
+  --font-sans:
     Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #f8fafc;
-  color: #0f172a;
 }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
-}
+@layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
 
-a {
-  color: inherit;
-  text-decoration: none;
+  body {
+    @apply bg-slate-50 font-sans text-slate-900 antialiased;
+  }
 }
