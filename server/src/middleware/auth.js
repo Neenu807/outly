@@ -1,34 +1,67 @@
-import { verifyAccessToken } from "../utils/jwt.js";
+import ApiError from "../utils/ApiError.js";
 import { apiError } from "../utils/errorCodes.js";
+import { authenticateAccessToken } from "../services/auth.service.js";
 
-// NOTE (Step B): this becomes the full `requireAuth` from §18 — loading the
-// user, comparing `tokenVersion`, and attaching `req.user`. It currently only
-// verifies the signature and attaches `req.userId`.
+/**
+ * Authentication — "who are you" (ARCHITECTURE §18).
+ *
+ * Both middlewares attach a live, database-loaded `req.user`. Nothing about the
+ * user's standing is taken from the token beyond its id and tokenVersion.
+ */
 
-const verifyJWT = (req, res, next) => {
-  const authHeader = req.headers.authorization;
+const readBearerToken = (req) => {
+  const [scheme, token] = (req.headers.authorization ?? "").split(" ");
 
-  if (!authHeader) {
+  return scheme === "Bearer" && token ? token : null;
+};
+
+/** Valid access token · user exists · tokenVersion matches → 401 otherwise. */
+const requireAuth = async (req, res, next) => {
+  const token = readBearerToken(req);
+
+  if (!token) {
     return next(apiError("UNAUTHENTICATED", "Authentication required"));
   }
 
-  const [scheme, token] = authHeader.split(" ");
+  let user;
 
-  if (scheme !== "Bearer" || !token) {
-    return next(apiError("UNAUTHENTICATED", "Authentication required"));
+  try {
+    user = await authenticateAccessToken(token);
+  } catch (error) {
+    return next(error);
+  }
+
+  req.user = user;
+
+  return next();
+};
+
+/**
+ * For public routes that personalise when they can: browse, discovery,
+ * activity detail (§18, "optional auth for personalisation").
+ *
+ * An absent, expired or revoked token means anonymous — never a 401 — because
+ * a stale session must not stop anyone browsing. A database failure is a
+ * different thing and still propagates; it is not "anonymous".
+ */
+const optionalAuth = async (req, res, next) => {
+  req.user = null;
+
+  const token = readBearerToken(req);
+
+  if (!token) {
+    return next();
   }
 
   try {
-    const payload = verifyAccessToken(token);
-
-    req.userId = payload.userId;
-
-    return next();
-  } catch {
-    return next(
-      apiError("UNAUTHENTICATED", "Invalid or expired authentication token"),
-    );
+    req.user = await authenticateAccessToken(token);
+  } catch (error) {
+    if (!(error instanceof ApiError)) {
+      return next(error);
+    }
   }
+
+  return next();
 };
 
-export default verifyJWT;
+export { requireAuth, optionalAuth };

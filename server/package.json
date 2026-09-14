@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "lint": "eslint .",
     "format": "prettier --write \"src/**/*.js\" \"tests/**/*.js\"",
+    "migrate:organizers": "node scripts/migrateOrganizers.js",
     "seed": "echo \"Phase 2: scripts/seed.js\" && exit 1",
     "reconcile": "echo \"Phase 3: scripts/reconcile.js\" && exit 1",
     "create-admin": "echo \"Phase 1: scripts/createAdmin.js\" && exit 1"

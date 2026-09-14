@@ -123,3 +123,6 @@ resolution of an internal inconsistency, not a shortcut.
 - **`src/pages/` exists alongside `src/features/`.** §29 names
   `client/src/pages/Home.jsx` while §22's tree omits `pages/`. Route-level pages
   live in `pages/`, feature modules in `features/`.
+- **The organizer migration is `scripts/migrateOrganizers.js`.** §7 names it
+  that; §23's script list still says `migrateApprovals.js`, a leftover from the
+  v4 approval model. §7 describes what the script actually does, so its name wins.

@@ -19,6 +19,9 @@ export default defineConfig({
       JWT_REFRESH_SECRET: "test-refresh-secret-that-is-long-enough-32",
       CLIENT_URL: "http://localhost:5173",
       LOG_LEVEL: "silent",
+      // The lowest cost env.js accepts. Production stays at 12; the suite hashes
+      // and compares often enough that cost 12 would dominate its runtime.
+      BCRYPT_SALT_ROUNDS: "10",
     },
   },
 });

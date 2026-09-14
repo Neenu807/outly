@@ -103,6 +103,7 @@ published secret.**
 | `server` | `npm start` | production start |
 | `server` | `npm test` | Vitest against mongodb-memory-server |
 | `server` | `npm run lint` | ESLint |
+| `server` | `npm run migrate:organizers` | dry run of the §7 organizer migration; add `-- --apply` to write |
 | `client` | `npm run dev` | Vite dev server |
 | `client` | `npm run build` | production bundle to `dist/` |
 | `client` | `npm run lint` | ESLint |

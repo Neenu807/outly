@@ -31,6 +31,11 @@ export default [
     },
   },
   {
+    // CLI scripts report to a terminal; process.env stays forbidden there too.
+    files: ["scripts/**/*.js"],
+    rules: { "no-console": "off" },
+  },
+  {
     // env.js is the one place process.env is read; tests set it deliberately.
     files: ["src/config/env.js", "tests/**/*.js", "vitest.config.js"],
     rules: { "no-restricted-properties": "off", "no-console": "off" },

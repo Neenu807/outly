@@ -1,6 +1,6 @@
 import express from "express";
 import healthRoutes from "./health.routes.js";
-import authRoutes from "./authRoutes.js";
+import authRoutes from "./auth.routes.js";
 
 /**
  * Every route in the application mounts here, under `/api/v1` (§29).

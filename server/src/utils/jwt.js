@@ -1,27 +1,51 @@
 import jwt from "jsonwebtoken";
 import env from "../config/env.js";
 
-// NOTE (Step B): the payload becomes `{ sub, tokenVersion }` per §18. It is
-// still `{ userId }` here because `tokenVersion` does not exist on the User
-// model yet.
+/**
+ * Token payloads carry `{ sub, tokenVersion }` and nothing else (ARCHITECTURE
+ * §18). A JWT is signed, not encrypted, so anything in it is readable by
+ * whoever holds it — and anything in it is stale the moment it changes.
+ * `role`, `organizerStatus` and `isEmailVerified` are read from the database on
+ * every request instead, so verifying an email or approving an organizer takes
+ * effect on the very next call.
+ *
+ * The algorithm is pinned on both sign and verify, which closes `alg: none`
+ * and algorithm-confusion tokens outright.
+ */
 
-const generateAccessToken = (userId) =>
-  jwt.sign({ userId }, env.JWT_ACCESS_SECRET, {
-    expiresIn: env.JWT_ACCESS_EXPIRES,
+const ALGORITHM = "HS256";
+
+const sign = (user, secret, expiresIn) =>
+  jwt.sign({ tokenVersion: user.tokenVersion }, secret, {
+    subject: String(user._id),
+    expiresIn,
+    algorithm: ALGORITHM,
   });
 
-const generateRefreshToken = (userId) =>
-  jwt.sign({ userId }, env.JWT_REFRESH_SECRET, {
-    expiresIn: env.JWT_REFRESH_EXPIRES,
-  });
+const verify = (token, secret) => jwt.verify(token, secret, { algorithms: [ALGORITHM] });
 
-const verifyAccessToken = (token) => jwt.verify(token, env.JWT_ACCESS_SECRET);
+const generateAccessToken = (user) =>
+  sign(user, env.JWT_ACCESS_SECRET, env.JWT_ACCESS_EXPIRES);
 
-const verifyRefreshToken = (token) => jwt.verify(token, env.JWT_REFRESH_SECRET);
+/**
+ * Returns the token with its expiry, so the cookie's lifetime is derived from
+ * the token rather than restated beside it — the two cannot drift when
+ * JWT_REFRESH_EXPIRES changes.
+ */
+const issueRefreshToken = (user) => {
+  const token = sign(user, env.JWT_REFRESH_SECRET, env.JWT_REFRESH_EXPIRES);
+  const { exp } = jwt.decode(token);
+
+  return { token, expiresAt: new Date(exp * 1000) };
+};
+
+const verifyAccessToken = (token) => verify(token, env.JWT_ACCESS_SECRET);
+
+const verifyRefreshToken = (token) => verify(token, env.JWT_REFRESH_SECRET);
 
 export {
   generateAccessToken,
-  generateRefreshToken,
+  issueRefreshToken,
   verifyAccessToken,
   verifyRefreshToken,
 };
