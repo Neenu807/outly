@@ -19,9 +19,52 @@ the end of Phase 1 rather than the end of the project.
   `autoIndex` is off in production, so without `create-indexes` the unique email
   index does not exist. Save the admin password it prints — it is shown once.
 
-## 2. Email (Mailtrap or any SMTP relay)
+## 2. Email (an SMTP relay that offers port 2525)
 
-- [ ] Create an SMTP inbox and note host, port, user and password.
+> **Render's free tier blocks outbound SMTP on ports 25, 465 and 587** (since
+> September 2025). A provider reachable only on those ports fails *silently in
+> production*: the connection times out, the send is swallowed by design (§17),
+> and nobody can verify an email. **Choose a relay that offers port 2525**, or
+> pay for a Render instance type that lifts the restriction.
+> This rules out Gmail, which offers only 465 and 587.
+
+`email.service.js` needs no change for 2525: `secure` is true only on 465, and
+Nodemailer upgrades the connection with STARTTLS on the others.
+
+**Real delivery — Brevo** (free: 300 emails/day, no domain required)
+
+- [ ] Verify a sender address under **Senders, domains & IPs → Senders**.
+- [ ] Generate an SMTP key under **SMTP & API → SMTP**, and note the SMTP login
+      shown there — it is not necessarily the account email.
+
+```
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=2525
+SMTP_USER=<SMTP login>
+SMTP_PASS=<SMTP key>
+EMAIL_FROM=Outly <the verified sender address>
+```
+
+`EMAIL_FROM` must be exactly the verified sender or Brevo rejects the message.
+Without a domain of your own, expect some mail to land in spam.
+
+**Testing only — Mailtrap Email Sandbox.** Every message is trapped in a web
+inbox and *never reaches a real recipient*, so nobody but you can verify an
+address. Credentials: **Sandboxes → your sandbox → Integration**.
+
+```
+SMTP_HOST=sandbox.smtp.mailtrap.io
+SMTP_PORT=2525
+SMTP_USER=<sandbox username>
+SMTP_PASS=<sandbox password>
+EMAIL_FROM=Outly <no-reply@outly.app>
+```
+
+- [ ] Test locally first: put the five values in `server/.env`, keep
+      `MONGODB_URI` pointed at the local database, register an account, and
+      confirm the API logs `Email sent` rather than
+      `Email NOT sent — SMTP is not configured`. While those values are set,
+      local development sends real email on every registration.
 - Production refuses to boot without `SMTP_HOST` and `SMTP_PORT`: verification
   gates booking, so a platform that cannot send it is one nobody can book on.
 

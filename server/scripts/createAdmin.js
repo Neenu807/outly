@@ -80,12 +80,22 @@ const runFromCli = async () => {
   }
 };
 
+/**
+ * A Zod failure puts the whole issue array in `error.message` as JSON, which
+ * fills the terminal with a stack of braces for something as ordinary as a
+ * mistyped email. Only the messages are worth reading.
+ */
+const describe = (error) =>
+  Array.isArray(error?.issues)
+    ? error.issues.map((issue) => issue.message).join("; ")
+    : (error?.message ?? String(error));
+
 const invokedDirectly =
   process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 
 if (invokedDirectly) {
   runFromCli().catch((error) => {
-    console.error("create-admin failed:", error.message);
+    console.error(`create-admin failed: ${describe(error)}`);
     process.exitCode = 1;
   });
 }
