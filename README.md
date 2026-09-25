@@ -3,9 +3,17 @@
 Activity discovery and booking platform. Find something to do tonight, book a
 seat, show up, review it.
 
-> **Status: Phase 1 built locally — auth, email verification, profile and
-> organizer approval.** The first production deploy is next; see
-> [`docs/DEPLOY.md`](docs/DEPLOY.md) and [Development phases](#development-phases).
+> **Status: Phase 1 complete and deployed** — accounts, email verification,
+> password reset and change, profiles, organizer requests and the admin review
+> queue. Tagged `v0.2-auth`. Next up is Phase 2; see
+> [Development phases](#development-phases).
+
+**Live:** [outly-beige.vercel.app](https://outly-beige.vercel.app) ·
+API health: [`/api/v1/health`](https://outly-api-m0fv.onrender.com/api/v1/health)
+
+Vercel serves the client, Render the API, MongoDB Atlas the database, and Brevo
+delivers the mail. The API runs on Render's free tier, so it sleeps after about
+15 minutes idle and the next request takes 30–60 seconds to wake it.
 
 ## Tech stack, and why
 
@@ -173,7 +181,7 @@ aggregation correctness.
 | Phase | Scope | Status |
 |---|---|---|
 | 0 | Foundation & contract lock | **complete** |
-| 1 | Auth · email verification · organizer approval · first deploy | built locally; deploy pending |
+| 1 | Auth · email verification · organizer approval · first deploy | **complete** |
 | 2 | Categories · activity read · search/filter/sort · seed | — |
 | 3 | Booking · atomic capacity · integrity · completion job | — |
 | 4 | Organizer · Cloudinary · dashboards · aggregation | — |
